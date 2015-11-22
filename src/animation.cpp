@@ -23,37 +23,81 @@ frame3f animate_compute_frame(FrameAnimation* animation, int time) {
 void animate_frame(Scene* scene) {
     // YOUR CODE GOES HERE ---------------------
     // foreach mesh
+    for (Mesh* mesh : scene->meshes) {
         // if not animation, continue
+        if (!mesh->animation) {
+            continue;
+        }
         // update frame
+        mesh->frame = animate_compute_frame(mesh->animation, scene->animation->time);
+    }
     // foreach surface
+    for (Surface* surf : scene->surfaces) {
         // if not animation, continue
+        if (!surf->animation) {
+            continue;
+        }
         // update frame
+        surf->frame = animate_compute_frame(surf->animation, scene->animation->time);
         // update the _display_mesh
+        surf->_display_mesh->frame = surf->frame;
+        
+    }
 }
 
 // skinning scene
 void animate_skin(Scene* scene) {
     // YOUR CODE GOES HERE ---------------------
     // foreach mesh
+    for (Mesh* mesh : scene->meshes) {
         // if no skinning, continue
+        if (! mesh->skinning) continue;
         // foreach vertex index
+        for (int v_idx : range(mesh->pos.size())){
             // set pos/norm to zero
+            mesh->pos[v_idx] = zero3f;
+            mesh->norm[v_idx] = zero3f;
             // for each bone slot (0..3)
+            for (int bone_n : range(0, 3)){
                 // get bone weight and index
+                float bone_weight = mesh->skinning->bone_weights[v_idx][bone_n];
+                int bone_idx = mesh->skinning->bone_ids[v_idx][bone_n];
+                
                 // if index < 0, continue
+                if (bone_idx < 0) continue;
                 // grab bone xform
+                mat4f bone_xform = mesh->skinning->bone_xforms[scene->animation->time][bone_idx];
+                
                 // update position and normal
+                vec3f rest_pos = mesh->skinning->rest_pos[v_idx];
+                vec3f rest_norm = mesh->skinning->rest_norm[v_idx];
+                
+                mesh->pos[v_idx] += bone_weight*transform_point(bone_xform, rest_pos);
+                mesh->pos[v_idx] += bone_weight*transform_normal(bone_xform, rest_norm);
+                
+                
+            }
             // normalize normal
+            mesh->norm[v_idx] = normalize(mesh->norm[v_idx]);
+        }
+    }
 }
 
 // particle simulation
 void simulate(Scene* scene) {
     // YOUR CODE GOES HERE ---------------------
     // for each mesh
+    for(Mesh* mesh: scene->meshes) {
         // skip if no simulation
+        if (! mesh->simulation) continue;
+        
         // compute time per step
+        float t = scene->animation->dt/scene->animation->simsteps;
         // foreach simulation steps
+        for(int i = 0; i < scene->animation->simsteps; i++){
             // compute extenal forces (gravity)
+            const float g = 9.81;
+            float F = mesh->simulation->mass * g;
             // for each spring, compute spring force on points
                 // compute spring distance and length
                 // compute static force
@@ -76,7 +120,9 @@ void simulate(Scene* scene) {
                     // if inside
                         // set particle position
                         // update velocity
+        }
         // smooth normals if it has triangles or quads
+    }
 }
 
 // scene reset
