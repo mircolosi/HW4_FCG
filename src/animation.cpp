@@ -94,21 +94,53 @@ void simulate(Scene* scene) {
         // compute time per step
         float t = scene->animation->dt/scene->animation->simsteps;
         // foreach simulation steps
+        
+        const float g = 9.81;
+        mesh->simulation->force = vector<vec3f>(mesh->point.size(), vec3f(0,-g,0));
+        for(int i = 0; i<mesh->point.size(); i++){
+            mesh->simulation->force[i]*=mesh->simulation->mass[i];
+        }
+        
         for(int i = 0; i < scene->animation->simsteps; i++){
             // compute extenal forces (gravity)
-            const float g = 9.81;
-            float F = mesh->simulation->mass * g;
+            
+            
             // for each spring, compute spring force on points
+            for (auto spring: mesh->simulation->springs) {
+                
                 // compute spring distance and length
+                int v_id1 = spring.ids.x;
+                int v_id2 = spring.ids.y;
+                
+                float spring_length = length(mesh->pos[v_id1]-mesh->pos[v_id2]);
+                vec3f spring_direction = normalize(mesh->pos[v_id1]-mesh->pos[v_id2]);
                 // compute static force
+                vec3f static_force = spring.ks*(spring_length-spring.restlength)*spring_direction;
+                
                 // accumulate static force on points
+                mesh->simulation->force[v_id1] += static_force;
+                mesh->simulation->force[v_id2] += -static_force;
+                
                 // compute dynamic force
+                vec3f spring_relative_vel = mesh->simulation->vel[v_id2]-mesh->simulation->vel[v_id1];
+                vec3f dynamic_force = spring.kd*(dot(spring_relative_vel, spring_direction))*spring_direction;
                 // accumulate dynamic force on points
+                mesh->simulation->force[v_id1] += dynamic_force;
+                mesh->simulation->force[v_id2] += -dynamic_force;
+                
+            }
             // newton laws
+            for(int point: mesh->point){
                 // if pinned, skip
+                if (mesh->simulation->pinned[point]) continue;
                 // acceleration
+                vec3f a = mesh->simulation->force[point]/mesh->simulation->mass[point];
                 // update velocity and positions using Euler's method
+                mesh->simulation->vel[point] += a*t;
+                mesh->pos[point] += mesh->simulation->vel[point]*t+a*t*t/2;
+                
                 // for each mesh, check for collision
+                for (Mesh* collision_mesh: scene->meshes) {
                     // compute inside tests
                     // if quad
                         // compute local poisition
@@ -120,6 +152,8 @@ void simulate(Scene* scene) {
                     // if inside
                         // set particle position
                         // update velocity
+                    }
+            }
         }
         // smooth normals if it has triangles or quads
     }
