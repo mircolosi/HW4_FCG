@@ -95,10 +95,11 @@ void simulate(Scene* scene) {
         float t = scene->animation->dt/scene->animation->simsteps;
         // foreach simulation steps
         
-        const float g = 9.81;
-        mesh->simulation->force = vector<vec3f>(mesh->point.size(), vec3f(0,-g,0));
-        for(int i = 0; i<mesh->point.size(); i++){
-            mesh->simulation->force[i]*=mesh->simulation->mass[i];
+        vec3f g = scene->animation->gravity;
+        mesh->simulation->force = vector<vec3f>(mesh->simulation->force.size(), g);
+        for(int i = 0; i<mesh->simulation->mass.size(); i++){
+            for(int j = 0; j<3; j++)
+                mesh->simulation->force[i][j]*=mesh->simulation->mass[i];
         }
         
         for(int i = 0; i < scene->animation->simsteps; i++){
@@ -141,21 +142,47 @@ void simulate(Scene* scene) {
                 
                 // for each mesh, check for collision
                 for (Mesh* collision_mesh: scene->meshes) {
+                    if (!collision_mesh->collision) continue;
                     // compute inside tests
                     // if quad
+                    if (collision_mesh->collision->isquad) {
                         // compute local poisition
+                        vec3f local_pos = transform_point_inverse(collision_mesh->frame, mesh->pos[point]);
+                        float r = collision_mesh->collision->radius;
                         // perform inside test
-                            // if inside, set position and normal
+                        // if inside, set position and normal
+                        if (local_pos.x > -r && local_pos.x < r &&
+                            local_pos.y > -r && local_pos.y < r &&
+                            local_pos.z < 0 ) {
+                            mesh->pos[point] = transform_point(collision_mesh->frame, vec3f(local_pos.x, local_pos.y, 0));
+                            mesh->norm[point] = transform_normal(collision_mesh->frame, z3f);
+                        } else continue;
+                    } else {
                         // else sphere
+                        vec3f c = collision_mesh->frame.o;
+                        float r = collision_mesh->collision->radius;
                         // inside test
-                            // if inside, set position and normal
+                        // if inside, set position and normal
+                        if (length(mesh->pos[point]-c)<r) {
+                            mesh->pos[point] = transform_point(collision_mesh->frame, r*normalize(mesh->pos[point]-c)+c);
+                            mesh->norm[point] = transform_normal(collision_mesh->frame, normalize(mesh->pos[point]-c));
+                        } else continue;
+
+                    }
+                    
                     // if inside
                         // set particle position
                         // update velocity
+                    float d_p = scene->animation->bounce_dump.x;
+                    float d_o = scene->animation->bounce_dump.y;
+                    vec3f v = mesh->simulation->vel[point];
+                    mesh->simulation->vel[point] = (v-dot(mesh->norm[point], v)*mesh->norm[point])*(1-d_p)+(-dot(mesh->norm[point], v)*mesh->norm[point])*(1-d_o);
                     }
             }
         }
         // smooth normals if it has triangles or quads
+        if(mesh->triangle.size()!=0 || mesh->quad.size()!=0)
+            smooth_normals(mesh);
     }
 }
 
