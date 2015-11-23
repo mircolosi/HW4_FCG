@@ -58,7 +58,7 @@ void animate_skin(Scene* scene) {
             mesh->pos[v_idx] = zero3f;
             mesh->norm[v_idx] = zero3f;
             // for each bone slot (0..3)
-            for (int bone_n : range(0, 3)){
+            for (int bone_n : range(0, 4)){
                 // get bone weight and index
                 float bone_weight = mesh->skinning->bone_weights[v_idx][bone_n];
                 int bone_idx = mesh->skinning->bone_ids[v_idx][bone_n];
@@ -73,7 +73,7 @@ void animate_skin(Scene* scene) {
                 vec3f rest_norm = mesh->skinning->rest_norm[v_idx];
                 
                 mesh->pos[v_idx] += bone_weight*transform_point(bone_xform, rest_pos);
-                mesh->pos[v_idx] += bone_weight*transform_normal(bone_xform, rest_norm);
+                mesh->norm[v_idx] += bone_weight*transform_normal(bone_xform, rest_norm);
                 
                 
             }
