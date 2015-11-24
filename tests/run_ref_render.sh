@@ -1,0 +1,11 @@
+../ref/animate-osx 01_monkey_keyframed01_render.json
+../ref/animate-osx 02_monkey_keyframed02_render.json
+../ref/animate-osx 03_horse_skinned_render.json
+../ref/animate-osx 04_samba_skinned_render.json
+../ref/animate-osx 05_swing_skinned_render.json
+../ref/animate-osx 06_particles_simulated01_render.json
+../ref/animate-osx 07_particles_simulated02_render.json
+../ref/animate-osx 08_particles_simulated03_render.json
+../ref/animate-osx 09_cloth_simulated01_render.json
+../ref/animate-osx 10_cloth_simulated02_render.json
+../ref/animate-osx 11_cloth_simulated03_render.json

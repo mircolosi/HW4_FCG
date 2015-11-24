@@ -87,6 +87,13 @@ void animate_skin(Scene* scene) {
 void simulate(Scene* scene) {
     // YOUR CODE GOES HERE ---------------------
     // for each mesh
+    bool inside = false;
+    vec3f g = scene->animation->gravity;
+    vec3f spring_direction, static_force, spring_relative_vel, dynamic_force, new_pos, new_norm;
+;
+    float spring_length;
+    int v_id1, v_id2;
+
     for(Mesh* mesh: scene->meshes) {
         // skip if no simulation
         if (! mesh->simulation) continue;
@@ -95,89 +102,103 @@ void simulate(Scene* scene) {
         float t = scene->animation->dt/scene->animation->simsteps;
         // foreach simulation steps
         
-        vec3f g = scene->animation->gravity;
-        mesh->simulation->force = vector<vec3f>(mesh->simulation->force.size(), g);
-        for(int i = 0; i<mesh->simulation->mass.size(); i++){
-            for(int j = 0; j<3; j++)
-                mesh->simulation->force[i][j]*=mesh->simulation->mass[i];
-        }
-        
-        for(int i = 0; i < scene->animation->simsteps; i++){
+        for(int simstep = 0; simstep < scene->animation->simsteps; simstep++){
             // compute extenal forces (gravity)
             
+            fill(mesh->simulation->force.begin(), mesh->simulation->force.end(), g);
+            for(int force = 0; force<mesh->simulation->force.size(); force++){
+
+                    mesh->simulation->force[force] *= mesh->simulation->mass[force*3];
+            }
             
             // for each spring, compute spring force on points
+
             for (auto spring: mesh->simulation->springs) {
                 
                 // compute spring distance and length
-                int v_id1 = spring.ids.x;
-                int v_id2 = spring.ids.y;
+                v_id1 = spring.ids.x;
+                v_id2 = spring.ids.y;
                 
-                float spring_length = length(mesh->pos[v_id1]-mesh->pos[v_id2]);
-                vec3f spring_direction = normalize(mesh->pos[v_id1]-mesh->pos[v_id2]);
+                spring_length = length(mesh->pos[v_id2]-mesh->pos[v_id1]);
+                spring_direction = normalize(mesh->pos[v_id2]-mesh->pos[v_id1]);
                 // compute static force
-                vec3f static_force = spring.ks*(spring_length-spring.restlength)*spring_direction;
+                static_force = spring.ks*(spring_length-spring.restlength)*spring_direction;
                 
                 // accumulate static force on points
                 mesh->simulation->force[v_id1] += static_force;
                 mesh->simulation->force[v_id2] += -static_force;
                 
                 // compute dynamic force
-                vec3f spring_relative_vel = mesh->simulation->vel[v_id2]-mesh->simulation->vel[v_id1];
-                vec3f dynamic_force = spring.kd*(dot(spring_relative_vel, spring_direction))*spring_direction;
+                spring_relative_vel = mesh->simulation->vel[v_id2]-mesh->simulation->vel[v_id1];
+                dynamic_force = spring.kd*(dot(spring_relative_vel, spring_direction))*spring_direction;
                 // accumulate dynamic force on points
                 mesh->simulation->force[v_id1] += dynamic_force;
                 mesh->simulation->force[v_id2] += -dynamic_force;
                 
             }
             // newton laws
-            for(int point: mesh->point){
+            for(int point = 0; point < mesh->pos.size(); point++){
                 // if pinned, skip
                 if (mesh->simulation->pinned[point]) continue;
+                
+                
                 // acceleration
-                vec3f a = mesh->simulation->force[point]/mesh->simulation->mass[point];
+                vec3f a = mesh->simulation->force[point]/mesh->simulation->mass[point*3];
                 // update velocity and positions using Euler's method
                 mesh->simulation->vel[point] += a*t;
                 mesh->pos[point] += mesh->simulation->vel[point]*t+a*t*t/2;
-                
+
                 // for each mesh, check for collision
-                for (Mesh* collision_mesh: scene->meshes) {
-                    if (!collision_mesh->collision) continue;
+                for (Surface* collision_mesh: scene->surfaces) {
                     // compute inside tests
                     // if quad
-                    if (collision_mesh->collision->isquad) {
+                    
+                    if (collision_mesh->isquad) {
                         // compute local poisition
                         vec3f local_pos = transform_point_inverse(collision_mesh->frame, mesh->pos[point]);
-                        float r = collision_mesh->collision->radius;
+                        float r = collision_mesh->radius;
                         // perform inside test
                         // if inside, set position and normal
                         if (local_pos.x > -r && local_pos.x < r &&
                             local_pos.y > -r && local_pos.y < r &&
                             local_pos.z < 0 ) {
-                            mesh->pos[point] = transform_point(collision_mesh->frame, vec3f(local_pos.x, local_pos.y, 0));
-                            mesh->norm[point] = transform_normal(collision_mesh->frame, z3f);
-                        } else continue;
+                            
+                            new_pos = transform_point(collision_mesh->frame, vec3f(local_pos.x, local_pos.y, 0));
+                            new_norm =  collision_mesh->frame.z;
+                            inside = true;
+                        }
+                        else inside = false;
+                        
                     } else {
                         // else sphere
                         vec3f c = collision_mesh->frame.o;
-                        float r = collision_mesh->collision->radius;
+                        float r = collision_mesh->radius;
                         // inside test
                         // if inside, set position and normal
+                        
                         if (length(mesh->pos[point]-c)<r) {
-                            mesh->pos[point] = transform_point(collision_mesh->frame, r*normalize(mesh->pos[point]-c)+c);
-                            mesh->norm[point] = transform_normal(collision_mesh->frame, normalize(mesh->pos[point]-c));
-                        } else continue;
-
+                            new_pos = r*normalize(mesh->pos[point]-c)+c;
+                            new_norm = normalize(mesh->pos[point]-c);
+                            inside = true;
+                        }
+                        else inside = false;
+                        
                     }
                     
                     // if inside
+                    if (inside) {
                         // set particle position
+                        mesh->pos[point] = new_pos;
+                        mesh->norm[point] = new_norm;
                         // update velocity
-                    float d_p = scene->animation->bounce_dump.x;
-                    float d_o = scene->animation->bounce_dump.y;
-                    vec3f v = mesh->simulation->vel[point];
-                    mesh->simulation->vel[point] = (v-dot(mesh->norm[point], v)*mesh->norm[point])*(1-d_p)+(-dot(mesh->norm[point], v)*mesh->norm[point])*(1-d_o);
+                        float d_p = scene->animation->bounce_dump.x;
+                        float d_o = scene->animation->bounce_dump.y;
+                        vec3f v = mesh->simulation->vel[point];
+                        mesh->simulation->vel[point] = (v-dot(mesh->norm[point], v)*mesh->norm[point])*(1-d_p)+(-dot(mesh->norm[point], v)*mesh->norm[point])*(1-d_o);
                     }
+                    
+                }
+
             }
         }
         // smooth normals if it has triangles or quads
