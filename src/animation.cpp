@@ -89,10 +89,12 @@ void simulate(Scene* scene) {
     // for each mesh
     bool inside = false;
     vec3f g = scene->animation->gravity;
-    vec3f spring_direction, static_force, spring_relative_vel, dynamic_force, new_pos, new_norm;
-;
+    vec3f spring_direction, static_force, spring_relative_vel, dynamic_force, new_pos, new_norm, a;
     float spring_length;
     int v_id1, v_id2;
+    
+    float d_p = scene->animation->bounce_dump.x;
+    float d_o = scene->animation->bounce_dump.y;
 
     for(Mesh* mesh: scene->meshes) {
         // skip if no simulation
@@ -143,7 +145,8 @@ void simulate(Scene* scene) {
                 
                 
                 // acceleration
-                vec3f a = mesh->simulation->force[point]/mesh->simulation->mass[point*3];
+                a = mesh->simulation->force[point]/mesh->simulation->mass[point*3];
+                
                 // update velocity and positions using Euler's method
                 mesh->simulation->vel[point] += a*t;
                 mesh->pos[point] += mesh->simulation->vel[point]*t+a*t*t/2;
@@ -191,8 +194,6 @@ void simulate(Scene* scene) {
                         mesh->pos[point] = new_pos;
                         mesh->norm[point] = new_norm;
                         // update velocity
-                        float d_p = scene->animation->bounce_dump.x;
-                        float d_o = scene->animation->bounce_dump.y;
                         vec3f v = mesh->simulation->vel[point];
                         mesh->simulation->vel[point] = (v-dot(mesh->norm[point], v)*mesh->norm[point])*(1-d_p)+(-dot(mesh->norm[point], v)*mesh->norm[point])*(1-d_o);
                     }
