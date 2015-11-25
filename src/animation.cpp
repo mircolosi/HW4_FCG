@@ -192,10 +192,10 @@ void simulate(Scene* scene) {
                     if (inside) {
                         // set particle position
                         mesh->pos[point] = new_pos;
-                        mesh->norm[point] = new_norm;
+//                        mesh->norm[point] = new_norm;
                         // update velocity
                         vec3f v = mesh->simulation->vel[point];
-                        mesh->simulation->vel[point] = (v-dot(mesh->norm[point], v)*mesh->norm[point])*(1-d_p)+(-dot(mesh->norm[point], v)*mesh->norm[point])*(1-d_o);
+                        mesh->simulation->vel[point] = (v-dot(new_norm, v)*new_norm)*(1-d_p)+(-dot(new_norm, v)*new_norm)*(1-d_o);
                     }
                     
                 }
