@@ -95,7 +95,7 @@ void simulate(Scene* scene) {
     
     float d_p = scene->animation->bounce_dump.x;
     float d_o = scene->animation->bounce_dump.y;
-
+    
     for(Mesh* mesh: scene->meshes) {
         // skip if no simulation
         if (! mesh->simulation) continue;
@@ -108,13 +108,15 @@ void simulate(Scene* scene) {
             // compute extenal forces (gravity)
             
             fill(mesh->simulation->force.begin(), mesh->simulation->force.end(), g);
-            for(int force = 0; force<mesh->simulation->force.size(); force++){
-
-                    mesh->simulation->force[force] *= mesh->simulation->mass[force*3];
+            
+            for(int force = 0; force < mesh->simulation->force.size(); force++){
+                
+                mesh->simulation->force[force] *= mesh->simulation->mass[force];
+                
             }
             
             // for each spring, compute spring force on points
-
+            
             for (auto spring: mesh->simulation->springs) {
                 
                 // compute spring distance and length
@@ -145,12 +147,12 @@ void simulate(Scene* scene) {
                 
                 
                 // acceleration
-                a = mesh->simulation->force[point]/mesh->simulation->mass[point*3];
+                a = mesh->simulation->force[point]/mesh->simulation->mass[point];
                 
                 // update velocity and positions using Euler's method
                 mesh->simulation->vel[point] += a*t;
                 mesh->pos[point] += mesh->simulation->vel[point]*t+a*t*t/2;
-
+                
                 // for each mesh, check for collision
                 for (Surface* collision_mesh: scene->surfaces) {
                     // compute inside tests
@@ -199,7 +201,7 @@ void simulate(Scene* scene) {
                     }
                     
                 }
-
+                
             }
         }
         // smooth normals if it has triangles or quads
