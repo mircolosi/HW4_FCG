@@ -139,6 +139,8 @@ void shade_mesh(Mesh* mesh, int time, bool wireframe, bool skinning_gpu, bool dr
     auto vertex_texcoord_location = glGetAttribLocation(state->gl_program_id, "vertex_texcoord");
     // YOUR CODE GOES HERE ---------------------
     // (only for extra credit)
+    auto vertex_skin_bone_ids_location = glGetAttribLocation(state->gl_program_id, "vertex_skin_bone_ids");
+    auto vertex_skin_bone_weights_location = glGetAttribLocation(state->gl_program_id, "vertex_skin_bone_weights");
     
     glEnableVertexAttribArray(vertex_pos_location);
     glVertexAttribPointer(vertex_pos_location, 3, GL_FLOAT, GL_FALSE, 0, &mesh->pos[0].x);
@@ -153,6 +155,18 @@ void shade_mesh(Mesh* mesh, int time, bool wireframe, bool skinning_gpu, bool dr
     if (mesh->skinning and skinning_gpu) {
         // YOUR CODE GOES HERE ---------------------
         // (only for extra credit)
+        glUniform1i(glGetUniformLocation(state->gl_program_id, "skin_enabled"), true);
+        glEnableVertexAttribArray(vertex_skin_bone_ids_location);
+        glVertexAttribPointer(vertex_skin_bone_ids_location, 4, GL_INT, GL_FALSE, 0, &mesh->skinning->bone_ids[0].x);
+        
+        glEnableVertexAttribArray(vertex_skin_bone_weights_location);
+        glVertexAttribPointer(vertex_skin_bone_weights_location, 4, GL_FLOAT, GL_FALSE, 0, &mesh->skinning->bone_weights[0].x);
+
+        for (int i = 0; i < 48; i++) {
+            string name = "skin_bone_xforms["+std::to_string(i)+"]";
+            glUniformMatrix4fv(glGetUniformLocation(state->gl_program_id, name.c_str()), 1, GL_TRUE, (float*)&mesh->skinning->bone_xforms[time][i][0]);
+        }
+        
     } else {
         glUniform1i(glGetUniformLocation(state->gl_program_id,"skinning->enabled"),GL_FALSE);
     }
@@ -176,6 +190,8 @@ void shade_mesh(Mesh* mesh, int time, bool wireframe, bool skinning_gpu, bool dr
     if(mesh->skinning) {
         // YOUR CODE GOES HERE ---------------------
         // (only for extra credit)
+        glDisableVertexAttribArray(vertex_skin_bone_ids_location);
+        glDisableVertexAttribArray(vertex_skin_bone_weights_location);
     }
     
     // draw normals if needed

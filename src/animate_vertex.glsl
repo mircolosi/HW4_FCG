@@ -24,8 +24,23 @@ void main() {
         // YOUR CODE GOES HERE ---------------------
         // (only for extra credit)
         // this is a placeholder
-        pos = vertex_pos;
-        norm = vertex_norm;
+        pos = vec3(0,0,0);
+        norm = vec3(0,0,0);
+        for (int bone = 0; bone < 4; bone++){
+            
+            float bone_weight = vertex_skin_bone_weights[bone];
+            int bone_id = int(vertex_skin_bone_ids[bone]);
+            
+            if (bone_id < 0) continue;
+            mat4 bone_xform = skin_bone_xforms[bone_id];
+            
+            pos += (bone_weight*bone_xform*vec4(vertex_pos,1)).xyz;
+            norm += (bone_weight*bone_xform*vec4(vertex_norm,0)).xyz;
+            
+        }
+        
+        norm = normalize(norm);
+        
     } else {
         pos = vertex_pos;
         norm = vertex_norm;
