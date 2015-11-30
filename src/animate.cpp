@@ -156,6 +156,7 @@ void shade_mesh(Mesh* mesh, int time, bool wireframe, bool skinning_gpu, bool dr
         // YOUR CODE GOES HERE ---------------------
         // (only for extra credit)
         glUniform1i(glGetUniformLocation(state->gl_program_id, "skin_enabled"), true);
+
         glEnableVertexAttribArray(vertex_skin_bone_ids_location);
         glVertexAttribPointer(vertex_skin_bone_ids_location, 4, GL_INT, GL_FALSE, 0, &mesh->skinning->bone_ids[0].x);
         
@@ -164,11 +165,11 @@ void shade_mesh(Mesh* mesh, int time, bool wireframe, bool skinning_gpu, bool dr
 
         for (int i = 0; i < 48; i++) {
             string name = "skin_bone_xforms["+std::to_string(i)+"]";
-            glUniformMatrix4fv(glGetUniformLocation(state->gl_program_id, name.c_str()), 1, GL_TRUE, (float*)&mesh->skinning->bone_xforms[time][i][0]);
+            glUniformMatrix4fv(glGetUniformLocation(state->gl_program_id, name.c_str()), 1, GL_TRUE, &mesh->skinning->bone_xforms[time][i][0].x);
         }
         
     } else {
-        glUniform1i(glGetUniformLocation(state->gl_program_id,"skinning->enabled"),GL_FALSE);
+        glUniform1i(glGetUniformLocation(state->gl_program_id,"skin_enabled"),GL_FALSE);
     }
     
     // draw triangles and quads
